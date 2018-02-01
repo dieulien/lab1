@@ -42,7 +42,7 @@ exercise2 is a function that returns 42 (instead of failing). When you
 submit, the Exercise 2 unit test should then pass.
 ......................................................................*)
 
-let exercise2 () = failwith "exercise2 not implemented" ;;
+let exercise2 () = 42 ;;
 
 (* Note that your grade on labs is not dependent on your passing the
 unit tests. You'll see that even when a unit test is marked as passed,
@@ -99,7 +99,7 @@ appropriate OCaml expression to assign the value to the variable
 exercise1 below.
 ......................................................................*)
 
-let exercise3 () = failwith "exercise3 not implemented" ;;
+let exercise3 () = (5-3)*-1 ;;
 
 (* Hint: The OCaml concrete expression
 
