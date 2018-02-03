@@ -194,7 +194,7 @@ Invalid_argument exception for instance.
 
 let rec max_list (lst : int list) : int =
 	match lst with
-  | [a] -> [a]
+  | [a] -> a
   | hd :: tl ->
      let max_tail = max_list tail in
      if hd > max_tail then head else max_tail;;
