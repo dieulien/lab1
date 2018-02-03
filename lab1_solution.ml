@@ -1,17 +1,21 @@
 (* 
-			      CS51 Lab 1
-		     Basic Functional Programming
-			     Spring 2017
-Objective:
+                              CS51 Lab 1
+                     Basic Functional Programming
+                             Spring 2017
+ *)
+(*
+                               SOLUTION
+ *)
+(* Objective:
 
 This lab is intended to get you up and running with the course's
-asssignment submission system, and thinking about core concepts
+assignment submission system, and thinking about core concepts
 introduced in class, including:
 
     concrete versus abstract syntax
     basic and complex types
     functional programming, both first-order and higher-order
-*)
+ *)
 
 (*======================================================================
 Part 0: Testing your Gradescope Interaction
@@ -64,7 +68,7 @@ ocaml, which you run with the command
     % ocaml
 
 We call this kind of interaction a "read-eval-print loop" or
-"REPL". Alterantively, you can feed the whole file to OCaml with the
+"REPL". Alternatively, you can feed the whole file to OCaml with the
 command:
 
     % ocaml < lab1.ml
@@ -113,6 +117,22 @@ correspond to. Check it with a member of the course staff if you'd
 like.
 ......................................................................*)
 
+(* The abstract syntax of the OCaml expression "- 5 - 3" has the
+subtraction as the primary operator, nesting the negation of 5 and 3
+as left and right children respectively, thus,
+
+      -
+      ^
+     / \
+    /   \
+   ~-    3
+   |
+   |
+   5
+
+Here, to emphasize that the two operators are distinct, I've used the
+concrete symbol ~- (an alternative spelling of the negation operation;
+see the Pervasives module) to notate the negation. *)
    
 (*======================================================================
 Part 2: Types and type inference
@@ -129,7 +149,10 @@ let exercise5a : int = 42 ;;
 let exercise5b : string =
   let greet y = "Hello " ^ y
   in greet "World!";;
-
+(* Note: If you were confused about what the ^ operator does, you'd
+have found it in the Pervasives module described in the OCaml
+documentation online. *)
+  
 let exercise5c : int * float -> int  =
   fun (x, y) -> x + int_of_float y ;;
 
@@ -138,6 +161,16 @@ let exercise5d : int -> bool =
 
 let exercise5e : bool -> bool list =
   fun x -> if x then [x] else [] ;;
+(* Note: The reasoning goes something like this: The argument of the
+   function is x. Since x is used as the condition part of an if
+   expression, it must be of type bool. Thus the expression in the
+   then clause ([x]) must be a bool list, and since the type of an if
+   expression is the type of its then and else expressions, the whole
+   if expression, the result of the function, must be a bool list. The
+   function itself is then of functional type bool -> bool list, as is
+   its name, exercise5e.
+ *)
+
 
 (*======================================================================
 Part 3: First-order functional programming
@@ -169,9 +202,10 @@ replace the "[]" with the correct functional call.
 let rec square_all (lst : int list) : int list =
   match lst with
   | [] -> []
-  | head ::tail -> (head * head) :: (square_all tail) ;;
+  | head :: tail -> (head * head) :: (square_all tail) ;;
 
-let exercise6 = square_all [3; 4; 5] ;;
+let exercise6 =
+  square_all [3; 4; 5] ;;
 
 (*......................................................................
 Exercise 7: Define a recursive function that sums an integer
@@ -179,11 +213,9 @@ list. (What's a sensible return value for the empty list?)
 ......................................................................*)
 
 let rec sum (lst : int list) : int =
-	match lst with
-	| [] -> 0
-	| hd::tl -> hd + sum tl;;
-
-  
+  match lst with
+  | [] -> 0
+  | head :: tail -> head + sum tail ;;
   
 (*......................................................................
 Exercise 8: Define a recursive function that returns the maximum
@@ -192,12 +224,46 @@ can raise an appropriate exception -- a Match_failure or
 Invalid_argument exception for instance.
 ......................................................................*)
 
+(* Here's a first cut at a solution, using just the portion of OCaml
+already introduced. Notice that there's no branch in the match that
+matches the empty list, because there is no max element in the empty
+list! For that reason, the ocaml interpreter warns us with an
+"inexhaustive pattern match" warning.
+    
 let rec max_list (lst : int list) : int =
-	match lst with
-  | [a] -> [a]
-  | hd :: tl ->
+  match lst with
+  | [elt] -> elt
+  | head :: tail ->
      let max_tail = max_list tail in
-     if hd > max_tail then head else max_tail;;
+     if head > max_tail then head else max_tail ;;
+
+This is the solution we expected people to come up with. And it seems
+to work.
+
+  # max_list [1; 3; 2] ;;
+  - : int = 3
+
+What happens when we apply this function to the empty list? 
+
+  # max_list [] ;;
+  Exception: Match_failure ("//toplevel//", 2, 2).
+
+It generates a Match_failure exception. (We'll talk more about
+exceptions later in the course.) This Match_failure exception is a
+symptom of a deeper underlying problem, namely, that the function
+max_list was called with an invalid argument. A better solution,
+then, and one that not coincidentally eliminates the "inexhaustive
+pattern match" warning, is to explicitly raise a more appropriate
+exception like Invalid_argument, as we've done in the solution
+below. *)
+  
+let rec max_list (lst : int list) : int =
+  match lst with
+  | [] -> raise (Invalid_argument "max_list: empty list")
+  | [elt] -> elt
+  | head :: tail ->
+     let max_tail = max_list tail in
+     if head > max_tail then head else max_tail ;;
 
 (*......................................................................
 Exercise 9: Define a function zip, that takes two int lists and
@@ -211,11 +277,67 @@ length lists, to just pad the shorter list with, say, false values, so
 that, zip [1] [2; 3; 4] = [(1, 2); (false, 3); (false, 4)]?
 ......................................................................*)
 
+(* A first attempt, not worrying about the problem of mismatched
+length lists:
+
 let rec zip (x : int list) (y : int list) : (int * int) list =
- match x,y with
- |[],[] -> []
- |[],_|_,[] -> failwith "length mismatched" 
- |hd1::tl1, hd2::tl2 -> (hd1, hd2)::zip tl1 tl2;;
+  match x, y with
+  | [], [] -> []
+  | xhd :: xtl, yhd :: ytl -> (xhd, yhd) :: (zip xtl ytl) ;;
+
+This warns about the pattern match not being exhaustive.  Better to
+eliminate the warning via
+
+let rec zip (x : int list) (y : int list) : (int * int) list =
+  match x, y with
+  | [], [] -> []
+  | xhd :: xtl, yhd :: ytl -> (xhd, yhd) :: (zip xtl ytl) 
+  | _, _ -> raise (Invalid_argument "zip: mismatched list lengths") ;;
+
+We might change the output type to an option type:
+
+let rec zip (x : int list) (y : int list) : (int * int) list option =
+  match x, y with
+  | [], [] -> Some []
+  | xhd :: xtl, yhd :: ytl -> Some ((xhd, yhd) :: (zip xtl ytl))
+  | _, _ -> None ;;
+
+but this doesn't type, since the recursive call is now an option
+type. We need to match on that:
+
+let rec zip (x : int list) (y : int list) : (int * int) list option =
+  match x, y with
+  | [], [] -> Some []
+  | xhd :: xtl, yhd :: ytl -> 
+      match zip xtl ytl with
+      | None -> None
+      | Some ztl -> Some ((xhd, yhd) :: ztl)
+  | _, _ -> None ;;
+
+This gives a very obscure error that the final pattern match "matches
+values of type 'a * 'b but a pattern was expected which matches values
+of type (int * int) list option". What's going on here? The final
+pattern match line is being associated with the inner match, not the
+intended outer match (despite how the indentation makes it look). This
+is a not-infrequent source of bugs. The fix:
+
+let rec zip (x : int list) (y : int list) : (int * int) list option =
+  match x, y with
+  | [], [] -> Some []
+  | xhd :: xtl, yhd :: ytl -> 
+     (match zip xtl ytl with
+      | None -> None
+      | Some ztl -> Some ((xhd, yhd) :: ztl))
+  | _, _ -> None ;;
+
+But the option type version is beyond the scope of lab 1. We use the
+error-raising version here. *)
+  
+let rec zip (x : int list) (y : int list) : (int * int) list =
+  match x, y with
+  | [], [] -> []
+  | xhd :: xtl, yhd :: ytl -> (xhd, yhd) :: (zip xtl ytl) 
+  | _, _ -> raise (Invalid_argument "zip mismatched length lists") ;;
 
 (*.....................................................................
 Exercise 10: Recall the definition of the function prods from lecture
@@ -246,7 +368,7 @@ let rec prods (lst : (int * int) list) : int list =
   | (x, y) :: tail -> (x * y) :: (prods tail) ;;
 
 let dotprod (a : int list) (b : int list) : int =
-	sum (prods (zip a b)) ;;
+  sum (prods (zip a b)) ;;
 
 (*======================================================================
 Part 4: High-order functional programming with map, filter, and fold
@@ -303,15 +425,40 @@ Exercise 11: Reimplement sum using fold_left, naming it sum_ho (for
 "higher order").
 ......................................................................*)
 
-let sum_ho (lst : int list) : int =
-  failwith "sum_ho not implemented" ;;
+let sum_ho : int list -> int =
+  List.fold_left (+) 0 ;;
+(* Note: One of the key advantages of curried functions (liked
+   fold_left) is that they can be partially applied. We've taken
+   advantage of that here, by defining sum_ho as a partially applied
+   fold_left, rather than as
+
+     let sum_ho (lst : int list) : int =
+       List.fold_left (+) 0 lst ;;
+
+   The latter will work, but lacks the clarity of the more idiomatic
+   approach here.
+
+   The same technique is used in the exercises below. It may be
+   useful, in order to understand what's going on, to try typing in
+   increasingly completely applied parts of an expression like
+   List.fold_left (+) 0 [1;2;3] and watch the types closely.
+
+     # List.fold_left ;;
+     - : ('a -> 'b -> 'a) -> 'a -> 'b list -> 'a = <fun>
+     # List.fold_left (+) ;;
+     - : int -> int list -> int = <fun>
+     # List.fold_left (+) 0 ;;
+     - : int list -> int = <fun>
+     # List.fold_left (+) 0 [1;2;3] ;;
+     - : int = 6
+ *)
 
 (*......................................................................
 Exercise 12: Reimplement prods using map.
 ......................................................................*)
 
-let prods_ho (lst : (int * int) list) : int list =
-  failwith "prods_ho not implemented" ;;
+let prods_ho : (int * int) list -> int list =
+  List.map (fun (x, y) -> x * y) ;;
   
 (*......................................................................
 Exercise 13: The OCaml List module provides, in addition to the map,
@@ -322,8 +469,13 @@ arguments and applies the function to corresponding elements of the
 two lists to form the result list. Use map2 to reimplement zip.
 ......................................................................*)
 
-let zip_ho (x : int list) (y : int list) : (int * int) list =
-  failwith "sum_ho not implemented" ;;
+let zip_ho : int list -> int list -> (int * int) list =
+  List.map2 (fun fst snd -> (fst, snd)) ;;
+
+(* Note the rejiggering of the first line to allow the function zip_ho
+   to be the functional output of the higher-order function
+   map2. We'll have more to say about this technique shortly when we
+   talk about "currying". *)
 
 (*......................................................................
 Exercise 14: Define a function evens, using these higher-order
@@ -332,4 +484,4 @@ even numbers in its argument list.
 ......................................................................*)
    
 let evens : int list -> int list =
-  fun _ -> failwith "evens not implemented" ;;
+  List.filter (fun n -> n mod 2 == 0) ;;
